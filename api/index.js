@@ -29,40 +29,14 @@ app.post('/api/verify', async (req, res) => {
         return res.status(422).json({ error: "Такой ответ недопустим" });
     }
 
-    let finalPercentage = null;
-    let status = "";
-    let reason = "";
-
-    if (lowerPrompt.includes('оранжевое') && lowerPrompt.includes('яблоко')) {
-        finalPercentage = 5; status = "Неверен"; reason = "Яблоки бывают красными, зелеными или желтыми, но не оранжевыми.";
-    } else if (lowerPrompt.includes('путин') && lowerPrompt.includes('женщина')) {
-        finalPercentage = 0; status = "Неверен"; reason = "Владимир Путин — мужчина.";
-    } else if (lowerPrompt.includes('патрик') && lowerPrompt.includes('женщина')) {
-        finalPercentage = 0; status = "Неверен"; reason = "Патрик Джейн — мужской персонаж.";
-    } else if (lowerPrompt.includes('вода') && lowerPrompt.includes('мокрая')) {
-        finalPercentage = 100; status = "Верен"; reason = "Вода жидкая по своей физической природе и обладает свойством смачивания.";
-    } else if (lowerPrompt.includes('путин') && lowerPrompt.includes('мужчина')) {
-        finalPercentage = 100; status = "Верен"; reason = "Владимир Путин является мужчиной.";
-    } else if (lowerPrompt.includes('патрик') && lowerPrompt.includes('мужчина')) {
-        finalPercentage = 100; status = "Верен"; reason = "Патрик Джейн — главный герой-мужчина сериала Менталист.";
-    } else if (lowerPrompt.includes('бабушка') && lowerPrompt.includes('женщина')) {
-        finalPercentage = 100; status = "Верен"; reason = "Бабушка — это мать отца или матери, родитель женского пола.";
-    } else if (lowerPrompt.includes('дедушка') && lowerPrompt.includes('мужчина')) {
-        finalPercentage = 100; status = "Верен"; reason = "Дедушка — это отец отца или матери, родитель мужского пола.";
-    } else if (lowerPrompt.includes('отец') && lowerPrompt.includes('мужчина')) {
-        finalPercentage = 100; status = "Верен"; reason = "Отец — это мужчина по отношению к своим детям.";
-    } else if (lowerPrompt.includes('мама') && lowerPrompt.includes('женщина')) {
-        finalPercentage = 100; status = "Верен"; reason = "Мама — это женщина по отношению к своим детям.";
-    }
-
-    if (finalPercentage !== null) {
-        return res.json({ percentage: finalPercentage, status: status, reason: reason });
-    }
-
     try {
         let keyFile;
         if (process.env.YANDEX_KEY_JSON) {
-            const rawKey = process.env.YANDEX_KEY_JSON;
+            let rawKey = process.env.YANDEX_KEY_JSON.trim();
+            if (rawKey.startsWith("'") && rawKey.endsWith("'")) rawKey = rawKey.slice(1, -1);
+            if (rawKey.startsWith('"') && rawKey.endsWith('"')) rawKey = rawKey.slice(1, -1);
+            rawKey = rawKey.trim();
+            
             keyFile = JSON.parse(rawKey);
             if (keyFile.private_key) {
                 keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
@@ -75,18 +49,16 @@ app.post('/api/verify', async (req, res) => {
         const now = Math.floor(Date.now() / 1000);
         const signedJwt = jwt.sign({
             iss: keyFile.service_account_id,
-                       aud: 'https://yandex.net',
-
+            aud: 'https://yandex.net',
             iat: now,
             exp: now + 3600
         }, keyFile.private_key, { algorithm: 'PS256', keyid: keyFile.id });
 
-                const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
-
+        const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
         const iamToken = tokenResponse.data.iamToken;
 
         const response = await axios.post('https://yandex.net', {
-            modelUri: `gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest`,
+            modelUri: 'gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest',
             completionOptions: { stream: false, temperature: 0.2 },
             messages: [
                 { role: 'system', text: 'Ты экспертная система верификации фактов. Напиши короткое обоснование на русском языке: правдиво ли утверждение пользователя или ошибочно.' },
