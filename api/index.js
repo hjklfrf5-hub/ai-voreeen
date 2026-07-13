@@ -158,9 +158,11 @@ app.get('/', (req, res) => {
                 return;
             }
 
-statusText.innerText = \`Вердикт ИИ: ${data.status}\`;
+statusText.innerText = `Вердикт ИИ: \${data.status}`;
 
-            percentageText.innerText = \`${data.percentage}%\`;
+
+           percentageText.innerText = `\${data.percentage}%`;
+
 
             reasonText.innerText = data.reason || "";
             
@@ -174,14 +176,16 @@ statusText.innerText = \`Вердикт ИИ: ${data.status}\`;
 
             percentageText.style.color = color;
             progressBar.style.backgroundColor = color;
-           progressBar.style.boxShadow = \`0 0 8px ${color}\`;
+          progressBar.style.boxShadow = `0 0 8px \${color}`;
+
 
             
             resultBox.style.display = 'block';
             
             // Запускаем анимацию заполнения полосы с небольшой задержкой для красоты
             setTimeout(() => {
-                progressBar.style.width = \`${data.percentage}%\`;
+              progressBar.style.width = `\${data.percentage}%`;
+
 
             }, 100);
 
