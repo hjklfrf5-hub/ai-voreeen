@@ -152,8 +152,6 @@ app.post('/api/verify', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Супер-стабильный сервер запущен на http://localhost:${PORT}`);
-});
+module.exports = app;
 
 
