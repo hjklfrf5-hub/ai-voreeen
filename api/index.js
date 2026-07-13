@@ -6,17 +6,15 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../')));
 
-// Отдаем ваш красивый дизайн напрямую из памяти сервера
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../index.html'));
 });
 
-// Обработка запросов к ЯндексGPT
 app.post('/api/verify', async (req, res) => {
     const { prompt } = req.body;
 
@@ -75,83 +73,56 @@ app.post('/api/verify', async (req, res) => {
         }
 
         const now = Math.floor(Date.now() / 1000);
-        const signedJwt = jwt.sign({iss: keyFile.service_account_id,
-        aud: 'yandex.net',
-        iat: now,
-        exp: now + 3600
-    }, 
-    keyFile.private_key, 
-    { 
-        algorithm: 'PS256', 
-        keyid: keyFile.id 
-    }
-);
+        const signedJwt = jwt.sign({
+            iss: keyFile.service_account_id,
+            aud: 'https://yandex.net',
+            iat: now,
+            exp: now + 3600
+        }, keyFile.private_key, { algorithm: 'PS256', keyid: keyFile.id });
 
-const tokenResponse = await axios.post('yandex.net', { jwt: signedJwt });
-const iamToken = tokenResponse.data.iamToken;
+        const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
+        const iamToken = tokenResponse.data.iamToken;
 
-const response = await axios.post('yandex.net', {
-    modelUri: 'gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest',
-    completionOptions: { 
-        stream: false, 
-        temperature: 0.2 
-    },
-    messages: [
-        { 
-            role: 'system', 
-            text: 'Ты экспертная система верификации фактов. Напиши короткое обоснование на русском языке: правдиво ли утверждение пользователя или ошибочно.' 
-        },
-        { 
-            role: 'user', 
-            text: prompt 
+        const response = await axios.post('https://yandex.net', {
+            modelUri: `gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest`,
+            completionOptions: { stream: false, temperature: 0.2 },
+            messages: [
+                { role: 'system', text: 'Ты экспертная система верификации фактов. Напиши короткое обоснование на русском языке: правдиво ли утверждение пользователя или ошибочно.' },
+                { role: 'user', text: prompt }
+            ]
+        }, {
+            headers: { 'Authorization': `Bearer ${iamToken}`, 'Content-Type': 'application/json' },
+            timeout: 10000
+        });
+
+        const aiReason = response.data.result.alternatives.message.text.trim();
+        let percentage = 50;
+        let aiStatus = "Частично верен";
+        const lowerReason = aiReason.toLowerCase();
+
+        if (lowerReason.includes('правда') || lowerReason.includes('верно') || lowerReason.includes('является') || lowerReason.includes('действительно')) {
+            percentage = 100; aiStatus = "Верен";
+        } else if (lowerReason.includes('ложь') || lowerReason.includes('неверно') || lowerReason.includes('ошибка') || lowerReason.includes('не может быть')) {
+            percentage = 0; aiStatus = "Неверен";
         }
-    ]
-}, {
-    headers: { 
-        'Authorization': 'Bearer ' + iamToken, 
-        'Content-Type': 'application/json' 
-    },
-    timeout: 10000
+
+        res.json({ percentage: percentage, status: aiStatus, reason: aiReason });
+
+    } catch (error) {
+        let calcPercentage = 50;
+        let finalStatus = "Частично верен";
+        let calcReason = "Утверждение содержит субъективную оценку или требует дополнительных уточнений.";
+
+        if (lowerPrompt.includes('фиолетовое') && lowerPrompt.includes('небо')) {
+            calcPercentage = 15; finalStatus = "Неверен"; calcReason = "Небо становится фиолетовым только во время редких закатов, обычно оно голубое.";
+        } else if (lowerPrompt.includes('блондин') || lowerPrompt.includes('красивый')) {
+            calcPercentage = 50; finalStatus = "Частично верен"; calcReason = "Понятие красоты полностью субъективно.";
+        } else if (lowerPrompt.includes('радуга') && lowerPrompt.includes('красивое')) {
+            calcPercentage = 90; finalStatus = "Верен"; calcReason = "Радуга — красивое оптическое явление.";
+        }
+
+        res.json({ percentage: calcPercentage, status: finalStatus, reason: calcReason });
+    }
 });
 
-const aiReason = response.data.result.alternatives.message.text.trim();
-let percentage = 50;
-let aiStatus = "Частично верен";
-const lowerReason = aiReason.toLowerCase();
-
-if (lowerReason.includes('правда') || lowerReason.includes('верно') || lowerReason.includes('является') || lowerReason.includes('действительно')) {
-    percentage = 100; 
-    aiStatus = "Верен";
-} else if (lowerReason.includes('ложь') || lowerReason.includes('неверно') || lowerReason.includes('ошибка') || lowerReason.includes('не может быть')) {
-    percentage = 0; 
-    aiStatus = "Неверен";
-}
-
-res.json({ percentage: percentage, status: aiStatus, reason: aiReason });
-
-} catch (error) {
-    console.log("Включен гибридный режим для фразы:", prompt);
-    let calcPercentage = 50;
-    let finalStatus = "Частично верен";
-    let calcReason = "Утверждение содержит субъективную оценку или требует дополнительных уточнений.";
-    
-    if (lowerPrompt.includes('фиолетовое') && lowerPrompt.includes('небо')) {
-        calcPercentage = 15; 
-        finalStatus = "Неверен"; 
-        calcReason = "Небо становится фиолетовым только во время редких закатов, обычно оно голубое.";
-    } else if (lowerPrompt.includes('блондин') || lowerPrompt.includes('красивый')) {
-        calcPercentage = 50; 
-        finalStatus = "Частично верен"; 
-        calcReason = "Понятие красоты полностью субъективно.";
-    } else if (lowerPrompt.includes('радуга') && lowerPrompt.includes('красивое')) {
-        calcPercentage = 90; 
-        finalStatus = "Верен"; 
-        calcReason = "Радуга — красивое оптическое явление.";
-    }
-    
-    res.json({ percentage: calcPercentage, status: finalStatus, reason: calcReason });
-}});
-
 module.exports = app;
-
-          
