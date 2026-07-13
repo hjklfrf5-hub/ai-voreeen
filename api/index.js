@@ -13,8 +13,7 @@ const YANDEX_FOLDER_ID = 'b1gb8i5dlrdipui59t2c';
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(express.static(path.join(__dirname, '../'));
 app.post('/api/verify', async (req, res) => {
     const { prompt } = req.body;
 
