@@ -45,14 +45,16 @@ app.post('/api/verify', async (req, res) => {
         const now = Math.floor(Date.now() / 1000);
         const signedJwt = jwt.sign({
             iss: keyFile.service_account_id,
-            aud: 'https://yandex.net',
+            aud: 'https://yandex.net', // ИСПРАВЛЕНО
             iat: now,
             exp: now + 3600
         }, keyFile.private_key, { algorithm: 'PS256', keyid: keyFile.id });
 
+        // ИСПРАВЛЕНО: Правильный адрес получения IAM-токена
         const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
         const iamToken = tokenResponse.data.iamToken;
 
+        // ИСПРАВЛЕНО: Правильный адрес API для YandexGPT
         const response = await axios.post('https://yandex.net', {
             modelUri: 'gpt://b1gb8i5dirdipui59t2c/yandexgpt-lite/latest',
             completionOptions: { stream: false, temperature: 0.2 },
@@ -65,7 +67,8 @@ app.post('/api/verify', async (req, res) => {
             timeout: 10000
         });
 
-        const aiReason = response.data.result.alternatives.message.text.trim();
+        // ИСПРАВЛЕНО: Добавлен выбор первого элемента [0] из массива alternatives
+        const aiReason = response.data.result.alternatives[0].message.text.trim();
         let percentage = 50;
         let aiStatus = "Частично верен";
         const lowerReason = aiReason.toLowerCase();
@@ -79,6 +82,9 @@ app.post('/api/verify', async (req, res) => {
         res.json({ percentage: percentage, status: aiStatus, reason: aiReason });
 
     } catch (error) {
+        // Логируем реальную ошибку в терминал сервера для удобства отладки
+        console.error("Детали ошибки Yandex API:", error.response?.data || error.message);
+
         let calcPercentage = 50;
         let finalStatus = "Частично верен";
         let calcReason = "Утверждение содержит субъективную оценку или требует дополнительных уточнений.";
