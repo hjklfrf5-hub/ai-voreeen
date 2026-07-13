@@ -6,9 +6,12 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(express.json());
 
+// Отдаем ваш красивый дизайн напрямую из памяти сервера
 app.get('/', (req, res) => {
     res.send(`
 <!DOCTYPE html>
@@ -38,174 +41,167 @@ app.get('/', (req, res) => {
             text-align: center;
             border: 1px solid #29292e;
         }
-        h1 { color: #ffffff; margin-bottom: 25px; font-size: 26px; }
+        h1 {
+            color: #4cc9f0;
+            margin-bottom: 24px;
+            font-size: 24px;
+            text-shadow: 0 0 10px rgba(76,201,240,0.3);
+        }
         textarea {
-            width: 100%; height: 110px; padding: 14px;
-            border: 2px solid #29292e; border-radius: 10px;
-            box-sizing: border-box; resize: none;
-            font-size: 16px; margin-bottom: 20px;
-            background-color: #121214; color: #ffffff;
-        }
-        textarea:focus { border-color: #00b4d8; outline: none; box-shadow: 0 0 10px rgba(0, 180, 216, 0.2); }
-        button {
-            background-color: #00b4d8; color: #121214; border: none;
-            padding: 14px 24px; font-size: 16px; border-radius: 10px;
-            font-weight: 600; cursor: pointer; width: 100%; transition: all 0.3s;
-            display: flex; justify-content: center; align-items: center; gap: 10px;
-        }
-        button:hover { background-color: #90e0ef; }
-        button:disabled { background-color: #29292e; color: #7c7c8a; cursor: not-allowed; }
-        
-        .spinner {
-            width: 18px; height: 18px;
-            border: 3px solid rgba(18,18,20,0.3);
-            border-radius: 50%; border-top-color: #121214;
-            animation: spin 1s ease-in-out infinite; display: none;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .result-box {
-            margin-top: 25px; padding: 20px; border-radius: 10px;
-            display: none; background-color: #121214; border: 1px solid #29292e;
-        }
-        .percentage { font-size: 36px; font-weight: bold; color: #00b4d8; margin: 12px 0 5px 0; }
-        .status { font-size: 19px; font-weight: 600; color: #ffffff; }
-        
-        /* Стили для полосы прогресса */
-        .progress-container {
             width: 100%;
-            height: 8px;
+            height: 100px;
+            background-color: #121214;
+            border: 2px solid #29292e;
+            border-radius: 8px;
+            color: #e1e1e6;
+            padding: 12px;
+            box-sizing: border-box;
+            resize: none;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        textarea:focus {
+            border-color: #4cc9f0;
+        }
+        button {
+            background-color: #4cc9f0;
+            color: #121214;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 16px;
+            width: 100%;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        button:hover {
+            background-color: #3a9cb8;
+            box-shadow: 0 0 15px rgba(76,201,240,0.4);
+        }
+        .result-box {
+            margin-top: 24px;
+            padding: 16px;
+            background-color: #121214;
+            border-radius: 8px;
+            border-left: 4px solid #ffb703;
+            text-align: left;
+            display: none;
+        }
+        .status-text {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .progress-container {
             background-color: #29292e;
             border-radius: 4px;
-            margin: 15px 0;
+            height: 8px;
+            width: 100%;
+            margin-bottom: 12px;
             overflow: hidden;
         }
         .progress-bar {
-            width: 0%;
+            background-color: #ffb703;
             height: 100%;
-            background-color: #00b4d8;
-            border-radius: 4px;
-            transition: width 0.8s ease-in-out, background-color 0.8s ease;
-            box-shadow: 0 0 8px rgba(0, 180, 216, 0.5);
+            width: 0%;
+            transition: width 1s ease-out;
         }
-
-        .reason { font-size: 14px; color: #a8a8b3; margin-top: 12px; font-style: italic; line-height: 1.5; }
+        .reason-text {
+            font-size: 14px;
+            color: #a8a8b3;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>Проверка запроса ИИ</h1>
-    <textarea id="promptInput" placeholder="Введите ваш запрос для проверки..."></textarea>
-    
-    <button id="submitBtn" onclick="checkPrompt()">
-        <span class="spinner" id="btnSpinner"></span>
-        <span id="btnText">Отправить на верификацию</span>
-    </button>
-
-    <div id="resultBox" class="result-box">
-        <div class="status" id="statusText">Статус</div>
-        <div class="percentage" id="percentageText">0%</div>
+    <div class="container">
+        <h1>ИИ Верификатор Запросов</h1>
+        <textarea id="promptInput" placeholder="Введите утверждение или факт для проверки..."></textarea>
+        <button id="verifyBtn" onclick="verifyFact()">Проверить факт</button>
         
-        <!-- Контейнер для полосы прогресса -->
-        <div class="progress-container">
-            <div id="progressBar" class="progress-bar"></div>
+        <div id="resultBox" class="result-box">
+            <div id="statusText" class="status-text">Ожидание...</div>
+            <div class="progress-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <div id="percentageText" style="font-weight: bold; margin-bottom: 8px;">0%</div>
+            <div id="reasonText" class="reason-text"></div>
         </div>
-
-        <div class="reason" id="reasonText">Объяснение</div>
     </div>
-</div>
 
-<script>
-    async function checkPrompt() {
-        const promptInput = document.getElementById('promptInput');
-        const submitBtn = document.getElementById('submitBtn');
-        const btnSpinner = document.getElementById('btnSpinner');
-        const btnText = document.getElementById('btnText');
-        
-        const resultBox = document.getElementById('resultBox');
-        const statusText = document.getElementById('statusText');
-        const percentageText = document.getElementById('percentageText');
-        const progressBar = document.getElementById('progressBar');
-        const reasonText = document.getElementById('reasonText');
+    <script>
+        async function verifyFact() {
+            const prompt = document.getElementById('promptInput').value;
+            const btn = document.getElementById('verifyBtn');
+            const resultBox = document.getElementById('resultBox');
+            const statusText = document.getElementById('statusText');
+            const progressBar = document.getElementById('progressBar');
+            const percentageText = document.getElementById('percentageText');
+            const reasonText = document.getElementById('reasonText');
 
-        if (!promptInput.value.trim()) {
-            alert('Пожалуйста, введите текст запроса.');
-            return;
-        }
+            if (!prompt.trim()) return alert('Введите текст запроса');
 
-        submitBtn.disabled = true;
-        btnSpinner.style.display = 'block';
-        btnText.innerText = 'ИИ анализирует...';
-        resultBox.style.display = 'none';
-        progressBar.style.width = '0%'; // сбрасываем полосу
+            btn.disabled = true;
+            btn.innerText = 'Проверяем...';
+            resultBox.style.display = 'none';
+            progressBar.style.width = '0%';
 
-        try {
-            const response = await fetch('/api/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: promptInput.value })
-            });
+            try {
+                const response = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
 
-            const data = await response.json();
+                const data = await response.json();
 
-            if (!response.ok) {
-                statusText.innerText = "Внимание";
-                percentageText.innerText = "⚠️";
-                percentageText.style.color = '#ff6b6b';
-                reasonText.innerText = data.error || "Произошла ошибка.";
+                if (data.error) {
+                    reasonText.innerText = data.error;
+                    resultBox.style.style.borderLeftColor = '#ff0054';
+                    resultBox.style.display = 'block';
+                    return;
+                }
+
+                statusText.innerText = 'Вердикт ИИ: ' + data.status;
+                percentageText.innerText = data.percentage + '%';
+                reasonText.innerText = data.reason || '';
+
+                let color = '#ff0054';
+                if (data.percentage > 75) {
+                    color = '#4cc9f0';
+                } else if (data.percentage >= 40) {
+                    color = '#ffb703';
+                }
+
+                percentageText.style.color = color;
+                progressBar.style.backgroundColor = color;
+                progressBar.style.boxShadow = '0 0 8px ' + color;
+                resultBox.style.borderLeftColor = color;
                 resultBox.style.display = 'block';
-                return;
+
+                setTimeout(() => {
+                    progressBar.style.width = data.percentage + '%';
+                }, 100);
+
+            } catch (error) {
+                statusText.innerText = 'Ошибка соединения';
+                reasonText.innerText = 'Не удалось связаться с сервером.';
+                resultBox.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Проверить факт';
             }
-
-statusText.innerText = `Вердикт ИИ: \${data.status}`;
-
-
-           percentageText.innerText = `\${data.percentage}%`;
-
-
-            reasonText.innerText = data.reason || "";
-            
-            // Настройка цвета текста, полосы и ее плавное заполнение
-            let color = '#ff0054'; // красный по умолчанию
-            if (data.percentage > 75) {
-                color = '#4cc9f0'; // красивый зеленый/бирюзовый неоновый
-            } else if (data.percentage >= 40) {
-                color = '#ffb703'; // оранжевый неоновый
-            }
-
-            percentageText.style.color = color;
-            progressBar.style.backgroundColor = color;
-          progressBar.style.boxShadow = `0 0 8px \${color}`;
-
-
-            
-            resultBox.style.display = 'block';
-            
-            // Запускаем анимацию заполнения полосы с небольшой задержкой для красоты
-            setTimeout(() => {
-              progressBar.style.width = `\${data.percentage}%`;
-
-
-            }, 100);
-
-        } catch (error) {
-            statusText.innerText = "Критическая ошибка";
-            percentageText.innerText = "❌";
-            reasonText.innerText = "Не получен ответ от сервера.";
-            resultBox.style.display = 'block';
-        } finally {
-            submitBtn.disabled = false;
-            btnSpinner.style.display = 'none';
-            btnText.innerText = 'Отправить на верификацию';
         }
-    }
-</script>
+    </script>
 </body>
 </html>
     `);
 });
 
+// Обработка запросов к ЯндексGPT
 app.post('/api/verify', async (req, res) => {
     const { prompt } = req.body;
 
@@ -215,13 +211,11 @@ app.post('/api/verify', async (req, res) => {
 
     const lowerPrompt = prompt.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"").trim();
 
-    // 1. Фильтр запрещенных вопросов
     const forbiddenWords = ['оружие', 'взрывчатк', 'наркотик', 'суицид', 'убить', 'хакер', 'взлом'];
     if (forbiddenWords.some(word => lowerPrompt.includes(word))) {
         return res.status(422).json({ error: "Такой ответ недопустим" });
     }
 
-    // 2. Железный локальный фильтр фактов (срабатывает мгновенно)
     let finalPercentage = null;
     let status = "";
     let reason = "";
@@ -252,10 +246,8 @@ app.post('/api/verify', async (req, res) => {
         return res.json({ percentage: finalPercentage, status: status, reason: reason });
     }
 
-    // 3. Запрос к ЯндексGPT с авторизацией по ключу
     try {
         let keyFile;
-
         if (process.env.YANDEX_KEY_JSON) {
             const rawKey = process.env.YANDEX_KEY_JSON;
             keyFile = JSON.parse(rawKey);
@@ -268,67 +260,83 @@ app.post('/api/verify', async (req, res) => {
         }
 
         const now = Math.floor(Date.now() / 1000);
-        const jwt = require('jsonwebtoken');
-        const axios = require('axios');
-        
-        const signedJwt = jwt.sign({
-            iss: keyFile.service_account_id,
-            aud: 'https://yandex.net',
-            iat: now,
-            exp: now + 3600
-        }, keyFile.private_key, { algorithm: 'PS256', keyid: keyFile.id });
-
-        const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
-        const iamToken = tokenResponse.data.iamToken;
-
-        const response = await axios.post(
-            'https://yandex.net',
-            {
-                modelUri: `gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest`,
-                completionOptions: { stream: false, temperature: 0.2 },
-                messages: [
-                    { role: 'system', text: 'Ты экспертная система верификации фактов. Напиши короткое обоснование на русском языке: правдиво ли утверждение пользователя или ошибочно.' },
-                    { role: 'user', text: prompt }
-                ]
-            },
-            {
-                headers: { 'Authorization': `Bearer ${iamToken}`, 'Content-Type': 'application/json' },
-                timeout: 10000
-            }
-        );
-
-        const aiReason = response.data.result.alternatives.message.text.trim();
-
-        let percentage = 50;
-        let aiStatus = "Частично верен";
-        const lowerReason = aiReason.toLowerCase();
-
-        if (lowerReason.includes('правда') || lowerReason.includes('верно') || lowerReason.includes('является') || lowerReason.includes('действительно')) {
-            percentage = 100; aiStatus = "Верен";
-        } else if (lowerReason.includes('ложь') || lowerReason.includes('неверно') || lowerReason.includes('ошибка') || lowerReason.includes('не может быть')) {
-            percentage = 0; aiStatus = "Неверен";
-        }
-
-        res.json({ percentage: percentage, status: aiStatus, reason: aiReason });
-
-    } catch (error) {
-        console.log("Включен гибридный режим для фразы:", prompt);
-
-        let calcPercentage = 50;
-        let finalStatus = "Частично верен";
-        let calcReason = "Утверждение содержит субъективную оценку или требует дополнительных уточнений.";
-
-        if (lowerPrompt.includes('фиолетовое') && lowerPrompt.includes('небо')) {
-            calcPercentage = 15; finalStatus = "Неверен"; calcReason = "Небо становится фиолетовым только во время редких закатов, обычно оно голубое.";
-        } else if (lowerPrompt.includes('блондин') || lowerPrompt.includes('красивый')) {
-            calcPercentage = 50; finalStatus = "Частично верен"; calcReason = "Понятие красоты полностью субъективно и не может быть проверено как точный факт.";
-        } else if (lowerPrompt.includes('радуга') && lowerPrompt.includes('красивое')) {
-            calcPercentage = 90; finalStatus = "Верен"; calcReason = "Радуга — красивое оптическое явление, большинство людей согласны с этим.";
-        }
-
-        res.json({ percentage: calcPercentage, status: finalStatus, reason: calcReason });
+        const signedJwt = jwt.sign({iss: keyFile.service_account_id,
+        aud: 'yandex.net',
+        iat: now,
+        exp: now + 3600
+    }, 
+    keyFile.private_key, 
+    { 
+        algorithm: 'PS256', 
+        keyid: keyFile.id 
     }
+);
+
+const tokenResponse = await axios.post('yandex.net', { jwt: signedJwt });
+const iamToken = tokenResponse.data.iamToken;
+
+const response = await axios.post('yandex.net', {
+    modelUri: 'gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest',
+    completionOptions: { 
+        stream: false, 
+        temperature: 0.2 
+    },
+    messages: [
+        { 
+            role: 'system', 
+            text: 'Ты экспертная система верификации фактов. Напиши короткое обоснование на русском языке: правдиво ли утверждение пользователя или ошибочно.' 
+        },
+        { 
+            role: 'user', 
+            text: prompt 
+        }
+    ]
+}, {
+    headers: { 
+        'Authorization': 'Bearer ' + iamToken, 
+        'Content-Type': 'application/json' 
+    },
+    timeout: 10000
 });
 
+const aiReason = response.data.result.alternatives.message.text.trim();
+let percentage = 50;
+let aiStatus = "Частично верен";
+const lowerReason = aiReason.toLowerCase();
+
+if (lowerReason.includes('правда') || lowerReason.includes('верно') || lowerReason.includes('является') || lowerReason.includes('действительно')) {
+    percentage = 100; 
+    aiStatus = "Верен";
+} else if (lowerReason.includes('ложь') || lowerReason.includes('неверно') || lowerReason.includes('ошибка') || lowerReason.includes('не может быть')) {
+    percentage = 0; 
+    aiStatus = "Неверен";
+}
+
+res.json({ percentage: percentage, status: aiStatus, reason: aiReason });
+
+} catch (error) {
+    console.log("Включен гибридный режим для фразы:", prompt);
+    let calcPercentage = 50;
+    let finalStatus = "Частично верен";
+    let calcReason = "Утверждение содержит субъективную оценку или требует дополнительных уточнений.";
+    
+    if (lowerPrompt.includes('фиолетовое') && lowerPrompt.includes('небо')) {
+        calcPercentage = 15; 
+        finalStatus = "Неверен"; 
+        calcReason = "Небо становится фиолетовым только во время редких закатов, обычно оно голубое.";
+    } else if (lowerPrompt.includes('блондин') || lowerPrompt.includes('красивый')) {
+        calcPercentage = 50; 
+        finalStatus = "Частично верен"; 
+        calcReason = "Понятие красоты полностью субъективно.";
+    } else if (lowerPrompt.includes('радуга') && lowerPrompt.includes('красивое')) {
+        calcPercentage = 90; 
+        finalStatus = "Верен"; 
+        calcReason = "Радуга — красивое оптическое явление.";
+    }
+    
+    res.json({ percentage: calcPercentage, status: finalStatus, reason: calcReason });
+}});
+
 module.exports = app;
-В
+
+          
