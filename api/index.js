@@ -75,12 +75,14 @@ app.post('/api/verify', async (req, res) => {
         const now = Math.floor(Date.now() / 1000);
         const signedJwt = jwt.sign({
             iss: keyFile.service_account_id,
-            aud: 'https://yandex.net',
+                       aud: 'https://yandex.net',
+
             iat: now,
             exp: now + 3600
         }, keyFile.private_key, { algorithm: 'PS256', keyid: keyFile.id });
 
-        const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
+                const tokenResponse = await axios.post('https://yandex.net', { jwt: signedJwt });
+
         const iamToken = tokenResponse.data.iamToken;
 
         const response = await axios.post('https://yandex.net', {
