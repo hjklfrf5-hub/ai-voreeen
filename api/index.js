@@ -32,11 +32,7 @@ app.post('/api/verify', async (req, res) => {
     try {
         let keyFile;
         if (process.env.YANDEX_KEY_JSON) {
-            let rawKey = process.env.YANDEX_KEY_JSON.trim();
-            if (rawKey.startsWith("'") && rawKey.endsWith("'")) rawKey = rawKey.slice(1, -1);
-            if (rawKey.startsWith('"') && rawKey.endsWith('"')) rawKey = rawKey.slice(1, -1);
-            rawKey = rawKey.trim();
-            
+            const rawKey = process.env.YANDEX_KEY_JSON;
             keyFile = JSON.parse(rawKey);
             if (keyFile.private_key) {
                 keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
@@ -58,7 +54,7 @@ app.post('/api/verify', async (req, res) => {
         const iamToken = tokenResponse.data.iamToken;
 
         const response = await axios.post('https://yandex.net', {
-            modelUri: 'gpt://b1gb8i5dlrdipui59t2c/yandexgpt-lite/latest',
+            modelUri: 'gpt://b1gb8i5dirdipui59t2c/yandexgpt-lite/latest',
             completionOptions: { stream: false, temperature: 0.2 },
             messages: [
                 { role: 'system', text: 'Ты экспертная система верификации фактов. Напиши короткое обоснование на русском языке: правдиво ли утверждение пользователя или ошибочно.' },
