@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИИ Верификатор Запросов</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121214;
+            color: #e1e1e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1a1a1e;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid #29292e;
+        }
+        h1 { color: #ffffff; margin-bottom: 25px; font-size: 26px; }
+        textarea {
+            width: 100%; height: 110px; padding: 14px;
+            border: 2px solid #29292e; border-radius: 10px;
+            box-sizing: border-box; resize: none;
+            font-size: 16px; margin-bottom: 20px;
+            background-color: #121214; color: #ffffff;
+        }
+        textarea:focus { border-color: #00b4d8; outline: none; box-shadow: 0 0 10px rgba(0, 180, 216, 0.2); }
+        button {
+            background-color: #00b4d8; color: #121214; border: none;
+            padding: 14px 24px; font-size: 16px; border-radius: 10px;
+            font-weight: 600; cursor: pointer; width: 100%; transition: all 0.3s;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        button:hover { background-color: #90e0ef; }
+        button:disabled { background-color: #29292e; color: #7c7c8a; cursor: not-allowed; }
+        
+        .spinner {
+            width: 18px; height: 18px;
+            border: 3px solid rgba(18,18,20,0.3);
+            border-radius: 50%; border-top-color: #121214;
+            animation: spin 1s ease-in-out infinite; display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .result-box {
+            margin-top: 25px; padding: 20px; border-radius: 10px;
+            display: none; background-color: #121214; border: 1px solid #29292e;
+        }
+        .percentage { font-size: 36px; font-weight: bold; color: #00b4d8; margin: 12px 0 5px 0; }
+        .status { font-size: 19px; font-weight: 600; color: #ffffff; }
+        
+        /* Стили для полосы прогресса */
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: #29292e;
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #00b4d8;
+            border-radius: 4px;
+            transition: width 0.8s ease-in-out, background-color 0.8s ease;
+            box-shadow: 0 0 8px rgba(0, 180, 216, 0.5);
+        }
+
+        .reason { font-size: 14px; color: #a8a8b3; margin-top: 12px; font-style: italic; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Проверка запроса ИИ</h1>
+    <textarea id="promptInput" placeholder="Введите ваш запрос для проверки..."></textarea>
+    
+    <button id="submitBtn" onclick="checkPrompt()">
+        <span class="spinner" id="btnSpinner"></span>
+        <span id="btnText">Отправить на верификацию</span>
+    </button>
+
+    <div id="resultBox" class="result-box">
+        <div class="status" id="statusText">Статус</div>
+        <div class="percentage" id="percentageText">0%</div>
+        
+        <!-- Контейнер для полосы прогресса -->
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+
+        <div class="reason" id="reasonText">Объяснение</div>
+    </div>
+</div>
+
+<script>
+    async function checkPrompt() {
+        const promptInput = document.getElementById('promptInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
+        
+        const resultBox = document.getElementById('resultBox');
+        const statusText = document.getElementById('statusText');
+        const percentageText = document.getElementById('percentageText');
+        const progressBar = document.getElementById('progressBar');
+        const reasonText = document.getElementById('reasonText');
+
+        if (!promptInput.value.trim()) {
+            alert('Пожалуйста, введите текст запроса.');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        btnSpinner.style.display = 'block';
+        btnText.innerText = 'ИИ анализирует...';
+        resultBox.style.display = 'none';
+        progressBar.style.width = '0%'; // сбрасываем полосу
+
+        try {
+            const response = await fetch('/api/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: promptInput.value })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                statusText.innerText = "Внимание";
+                percentageText.innerText = "⚠️";
+                percentageText.style.color = '#ff6b6b';
+                reasonText.innerText = data.error || "Произошла ошибка.";
+                resultBox.style.display = 'block';
+                return;
+            }
+
+            statusText.innerText = `Вердикт ИИ: ${data.status}`;
+            percentageText.innerText = `${data.percentage}%`;
+            reasonText.innerText = data.reason || "";
+            
+            // Настройка цвета текста, полосы и ее плавное заполнение
+            let color = '#ff0054'; // красный по умолчанию
+            if (data.percentage > 75) {
+                color = '#4cc9f0'; // красивый зеленый/бирюзовый неоновый
+            } else if (data.percentage >= 40) {
+                color = '#ffb703'; // оранжевый неоновый
+            }
+
+            percentageText.style.color = color;
+            progressBar.style.backgroundColor = color;
+            progressBar.style.boxShadow = `0 0 8px ${color}`;
+            
+            resultBox.style.display = 'block';
+            
+            // Запускаем анимацию заполнения полосы с небольшой задержкой для красоты
+            setTimeout(() => {
+                progressBar.style.width = `${data.percentage}%`;
+            }, 100);
+
+        } catch (error) {
+            statusText.innerText = "Критическая ошибка";
+            percentageText.innerText = "❌";
+            reasonText.innerText = "Не получен ответ от сервера.";
+            resultBox.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            btnSpinner.style.display = 'none';
+            btnText.innerText = 'Отправить на верификацию';
+        }
+    }
+</script>
+</body>
+</html>
