@@ -151,6 +151,11 @@ app.post('/api/verify', async (req, res) => {
         });
     }
 });
+// Автоматическая раздача интерфейса, если Vercel его теряет
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../index.html'));
+});
+module.exports = app;
 
 module.exports = app;
 
