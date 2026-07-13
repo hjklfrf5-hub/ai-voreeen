@@ -13,7 +13,46 @@ const YANDEX_FOLDER_ID = 'b1gb8i5dlrdipui59t2c';
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../'));
+app.get('/', (req, res) => {
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Верификатор</title>
+        <style>
+            body { background: #0b0f19; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            input { padding: 15px; width: 300px; border: 2px solid #00f0ff; background: #131a26; color: #fff; border-radius: 5px; outline: none; box-shadow: 0 0 10px #00f0ff; }
+            button { padding: 15px 30px; margin-top: 15px; background: #00f0ff; border: none; border-radius: 5px; color: #000; font-weight: bold; cursor: pointer; box-shadow: 0 0 15px #00f0ff; }
+            #res { margin-top: 20px; font-size: 1.2rem; text-shadow: 0 0 5px #00f0ff; }
+        </style>
+    </head>
+    <body>
+        <h1>Проверка фактов ИИ</h1>
+        <input type="text" id="inp" placeholder="Введите факт...">
+        <button onclick="check()">Проверить</button>
+        <div id="res"></div>
+        <script>
+            async function check() {
+                const r = document.getElementById('res');
+                r.innerText = 'Проверяем...';
+                try {
+                    const res = await fetch('/api/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: document.getElementById('inp').value })
+                    });
+                    const data = await res.json();
+                    if (data.error) r.innerText = data.error;
+                    else r.innerText = data.status + ' (' + data.percentage + '%): ' + data.reason;
+                } catch(e) { r.innerText = 'Ошибка соединения'; }
+            }
+        </script>
+    </body>
+    </html>
+    `);
+});
+
 app.post('/api/verify', async (req, res) => {
     const { prompt } = req.body;
 
