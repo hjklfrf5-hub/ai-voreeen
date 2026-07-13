@@ -158,8 +158,10 @@ app.get('/', (req, res) => {
                 return;
             }
 
-            statusText.innerText = `Вердикт ИИ: ${data.status}`;
-            percentageText.innerText = `${data.percentage}%`;
+statusText.innerText = \`Вердикт ИИ: ${data.status}\`;
+
+            percentageText.innerText = \`${data.percentage}%\`;
+
             reasonText.innerText = data.reason || "";
             
             // Настройка цвета текста, полосы и ее плавное заполнение
@@ -172,13 +174,15 @@ app.get('/', (req, res) => {
 
             percentageText.style.color = color;
             progressBar.style.backgroundColor = color;
-            progressBar.style.boxShadow = `0 0 8px ${color}`;
+           progressBar.style.boxShadow = \`0 0 8px ${color}\`;
+
             
             resultBox.style.display = 'block';
             
             // Запускаем анимацию заполнения полосы с небольшой задержкой для красоты
             setTimeout(() => {
-                progressBar.style.width = `${data.percentage}%`;
+                progressBar.style.width = \`${data.percentage}%\`;
+
             }, 100);
 
         } catch (error) {
